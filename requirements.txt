@@ -1,0 +1,41 @@
+
+# FastAPI and Backend
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+
+# HTTP Client
+httpx
+aiohttp
+
+# Image Processing
+Pillow
+opencv-python-headless
+numpy
+
+# LangChain
+langchain
+langchain-community
+
+# MongoDB
+pymongo
+motor
+
+# Utilities
+python-jose[crypto]
+passlib[bcrypt]
+python-dateutil
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+
+# Logging
+loguru==0.7.2
+
+# Type checking
+typing-extensions
