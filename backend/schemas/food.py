@@ -4,14 +4,14 @@ from datetime import datetime
 
 class DetectedFood(BaseModel):
     name: str = Field(..., description='Name of the detected food item')
-    estimated_quality: str = Field(..., description="Estimated quality (e.g., '180 g')")
+    estimated_quantity: str = Field(..., description="Estimated quantity (e.g., '180 g')")
     confidence: float = Field(..., ge=0.0, le=1.0, description='Detection confidence score')
 
     class Config:
         json_schema_extra = {
             'example': {
                 'name': 'Basmati Rice',
-                'estimated_quality': '180 g',
+                'estimated_quantity': '180 g',
                 'confidence': 0.91
             }
         }
