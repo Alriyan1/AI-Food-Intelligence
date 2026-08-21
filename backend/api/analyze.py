@@ -96,3 +96,12 @@ async def analyze_food(
         logger.info(f"Food analysis completed in {total_time:.2f}s")
 
         return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Food analysis failed; {e}",exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Food analysis failed: {str(e)}"
+        )
