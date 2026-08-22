@@ -3,11 +3,11 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 import time
 
-from backend.schemas.food import FoodAnalysisResponse
-from backend.schemas.nutrition import NutritionResponse
-from backend.services.image_processor import validate_image,preprocess_image,encode_image_to_base64
-from backend.services.food_analyzer import get_food_analyzer
-from backend.services.nutrition_service import get_nutrition_service
+from schemas.food import FoodAnalysisResponse
+from schemas.nutrition import NutritionResponse
+from services.image_processor import validate_image,preprocess_image,encode_image_to_base64
+from services.food_analyzer import get_food_analyzer
+from services.nutrition_service import get_nutrition_service
 
 router = APIRouter(prefix='/api/analyse-food',tags=['Food Analysis'])
 
@@ -100,7 +100,7 @@ async def analyze_food(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Food analysis failed; {e}",exc_info=True)
+        logger.error("Food analysis failed; {}", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Food analysis failed: {str(e)}"

@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings
 from typing import List
 from functools import lru_cache
+from pathlib import Path
+
 
 class Settings(BaseSettings):
 
@@ -8,9 +10,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
-    NVIDIA_API_KEY: str
-    NVIDIA_MODEL_NAME: str = "nvidia/vila"
-    NVIDIA_API_BASE_URL: str = "https://ai.api.nvidia.com/v1"
+    NVIDIA_API_KEY: str 
+    NVIDIA_MODEL_NAME: str = "meta/llama-3.2-11b-vision-instruct"
+    NVIDIA_API_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
 
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB_NAME: str = "foodvision_ai"
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     API_TIMEOUT_SECONDS: int = 60
 
     class Config:
-        env_file = ".env"
+        env_file = Path(__file__).resolve().parent.parent / ".env"
         case_sensitive = True
 
 

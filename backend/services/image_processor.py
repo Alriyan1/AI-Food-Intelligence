@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from loguru import logger
 
-from backend.config import settings
+from config import settings
 
 def validate_image(image_bytes: bytes, content_type: str)->Tuple[bool,str]:
 
@@ -65,5 +65,5 @@ def get_image_quality(image_bytes:bytes)->str:
         return 'good'
 
     except Exception as e:
-        logger.error(f"Error assessing image quality: {e}")
+        logger.error("Error assessing image quality: {}", e)
         return 'poor'

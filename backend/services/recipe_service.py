@@ -4,13 +4,13 @@ import httpx
 from typing import List,Dict,Any
 from loguru import logger
 
-from backend.config import settings
-from backend.schemas.recipe import (
+from config import settings
+from schemas.recipe import (
     Recipe,Ingredient,RecipeStep,DifficultyLevel,
     UserPreferences,RecipeGenerationResponse
 )
 
-from backend.utils.prompts import RECIPE_GENERATION_PROMPT
+from utils.prompts import RECIPE_GENERATION_PROMPT
 
 
 class RecipeService:
@@ -51,7 +51,7 @@ class RecipeService:
             return RecipeGenerationResponse(recipes=recipes_data)
 
         except Exception as e:
-            logger.error(f"Recipe generation failed: {e}")
+            logger.error("Recipe generation failed: {}", e)
             raise ValueError(f'Failed to generate recipes: {str(e)}')
 
     async def _call_llm(self,prompt:str)->str:
@@ -107,7 +107,7 @@ class RecipeService:
         try:
             recipes_data = json.loads(json_str)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse recipes JSON: {e}")
+            logger.error("Failed to parse recipes JSON: {}", e)
             raise ValueError('Invalid recipe format from LLM')
 
         recipes = []
@@ -116,7 +116,7 @@ class RecipeService:
                 recipe = self._create_recipe(recipe_data, preferences)
                 recipes.append(recipe)
             except Exception as e:
-                logger.warning(f"Error parsing recipe: {e}")
+                logger.warning("Error parsing recipe: {}", e)
                 continue
 
         return recipes

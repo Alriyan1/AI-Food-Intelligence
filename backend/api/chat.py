@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from loguru import logger
 from typing import List,Optional,Dict,Any
 
-from backend.schemas.chat import ChatRequest,ChatResponse,ChatMessage
-from backend.services.chat_service import get_chat_service
+from schemas.chat import ChatRequest,ChatResponse,ChatMessage
+from services.chat_service import get_chat_service
 
 router = APIRouter(prefix="/api/chat",tags=['Chat'])
 
@@ -40,7 +40,7 @@ async def chat(
         }
 
     except Exception as e:
-        logger.error(f"Chat failed: {e}",exc_info=True)
+        logger.error("Chat failed: {}", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Chat failed: {str(e)}"
@@ -78,7 +78,7 @@ async def chat_simple(
         return await chat(request)
 
     except Exception as e:
-        logger.error(f"Simple chat failed: {e}")
+        logger.error("Simple chat failed: {}", e)
         raise HTTPException(
             status_code=500,
             detail=f"Chat failed: {str(e)}"

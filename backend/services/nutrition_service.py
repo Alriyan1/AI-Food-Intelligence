@@ -3,9 +3,9 @@ import re
 from typing import List,Any,Optional,Tuple,Dict
 from loguru import logger
 
-from backend.schemas.food import DetectedFood
-from backend.schemas.nutrition import FoodNutrition,TotalNutrition,NutritionResponse
-from backend.config import settings
+from schemas.food import DetectedFood
+from schemas.nutrition import FoodNutrition,TotalNutrition,NutritionResponse
+from config import settings
 
 
 class NutritionService:
@@ -54,7 +54,7 @@ class NutritionService:
                 food_nutrition_list.append(nutrition)
             
             except Exception as e:
-                logger.error(f"Error calculating nutrition for {food.name}: {e}")
+                logger.error("Error calculating nutrition for {}: {}", food.name, e)
                 nutrition = self._estimate_nutrition_fallback(food)
                 food_nutrition_list.append(nutrition)
 
@@ -101,7 +101,7 @@ class NutritionService:
                             return self._parse_usda_response(detail_response,food,quantity_grams)
 
             except Exception as e:
-                logger.warning(f"USDA API error for {food.name}: {e}")
+                logger.warning("USDA API error for {}: {}", food.name, e)
 
 
         return self._estimate_nutrition_fallback(food)

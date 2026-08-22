@@ -1,12 +1,13 @@
 import json
+import re
 import time
 import httpx
 from typing import List, Dict, Any
 from loguru import logger
 
-from backend.config import settings
-from backend.schemas.food import DetectedFood,FoodAnalysisResponse
-from backend.utils.prompts import VISION_LLM_FOOD_DETECTION_PROMPT
+from config import settings
+from schemas.food import DetectedFood,FoodAnalysisResponse
+from utils.prompts import VISION_LLM_FOOD_DETECTION_PROMPT
 
 class FoodAnalyzer:
     def __init__(self):
@@ -27,14 +28,25 @@ class FoodAnalyzer:
         try:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "Contact-Type": "application/json",
+                "Content-Type": "application/json",
                 'Accept': "application/json"
             }
 
             messages = [
                 {
                     'role': 'user',
-                    "content": f"{VISION_LLM_FOOD_DETECTION_PROMPT}[Image provided]"
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": VISION_LLM_FOOD_DETECTION_PROMPT
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{image_type};base64,{image_base64}"
+                            }
+                        }
+                    ]
                 }
             ]
 
@@ -43,14 +55,11 @@ class FoodAnalyzer:
                 'messages': messages,
                 'temperature': 0.1,
                 'top_p': 0.7,
-                'max_tokens': 1024,
+                'max_tokens': 512,
                 'stream': False
             }
 
-            if hasattr(settings,'NVIDIA_VISION_ENDPOINT'):
-                endpoint = settings.NVIDIA_VISION_ENDPOINT
-            else:
-                endpoint = f"{self.api_base_url}/chat/completions"
+            endpoint = f"{self.api_base_url}/chat/completions"
 
             logger.info(f"Sending request to NVIDIA NIM API: {endpoint}")
 
@@ -68,15 +77,19 @@ class FoodAnalyzer:
 
                 result = response.json()
 
-            assistant_message = result.get('choice',[{}])[0].get('message',{}).get("content","")
+            assistant_message = self._content_to_text(
+                result.get('choices', [{}])[0].get('message', {}).get('content', '')
+            )
 
             json_str = self._extract_json_from_response(assistant_message)
 
-            if not json_str:
-                logger.error(f"Could not extract JSON from response: {assistant_message[:200]}")
-                raise ValueError('Invalid response format from Vision LLM')
-
-            parsed_response = json.loads(json_str)
+            if json_str:
+                parsed_response = json.loads(json_str)
+            else:
+                parsed_response = self._parse_markdown_response(assistant_message)
+                if not parsed_response:
+                    logger.error(f"Could not extract JSON from response: {assistant_message[:200]}")
+                    raise ValueError('Invalid response format from Vision LLM')
 
             detected_foods = []
             for food_item in parsed_response.get('foods',[]):
@@ -84,7 +97,7 @@ class FoodAnalyzer:
                     detected_foods.append(
                         DetectedFood(
                             name=food_item.get("name",'Unknown Food'),
-                            estimated_quality=food_item.get('estimated_quantity','Unknown'),
+                            estimated_quantity=food_item.get('estimated_quantity','Unknown'),
                             confidence=float(food_item.get('confidence',0.5))
                         )
                     )
@@ -99,37 +112,111 @@ class FoodAnalyzer:
             )
 
         except httpx.TimeoutException as e:
-            logger.error(f"Timeout calling NVIDIA API: {e}")
+            logger.error("Timeout calling NVIDIA API: {}", e)
             raise ValueError('Request timeout. Please try again.')
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parsing error: {e}")
+            logger.error("JSON parsing error: {}", e)
             raise ValueError("Failed to parse Vision LLM response")
         except Exception as e:
-            logger.error(f"Unexpected error in food analysis: {e}")
+            logger.error("Unexpected error in food analysis: {}", e)
             raise ValueError(f"Food analysis failed: {str(e)}")
 
 
-    def _extract_json_from_response(self,text:str)->str:
+    def _content_to_text(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content.strip()
 
-        if "```json" in text:
-            start = text.find("```json")+7
-            end = text.find("```",start)
-            return text[start:end].strip()
-        elif "```" in text:
-            start = text.find("```")+3
-            end = text.find("```",start)
-            return text[start:end].strip()
+        if isinstance(content, list):
+            return "\n".join(
+                part.get("text", "")
+                for part in content
+                if isinstance(part, dict) and isinstance(part.get("text"), str)
+            ).strip()
 
-        try:
-            start = text.find("{")
-            end = text.rfind("}")+1
-            if start >= 0 and end > start:
-                return text[start:end]
+        return str(content).strip() if content else ""
 
-        except Exception:
-            pass
+    def _parse_markdown_response(self, text: str) -> Dict[str, Any]:
+        foods = []
+        block_pattern = re.compile(
+            r"(?:^|\n)\s*[-*]\s*\*{0,2}Food Item\s*:\s*"
+            r"\*{0,2}\s*([^*\n]+?)\s*\*{0,2}\s*\n"
+            r"(.*?)(?=\n\s*[-*]\s*\*{0,2}Food Item\s*:|\Z)",
+            re.IGNORECASE | re.DOTALL,
+        )
+        quantity_pattern = re.compile(
+            r"Estimated\s+Quantity\s*:\s*\*{0,2}\s*"
+            r"(\d+(?:\.\d+)?)\s*(g|kg|ml|cup|cups|piece|pieces)",
+            re.IGNORECASE,
+        )
+        confidence_pattern = re.compile(
+            r"Confidence\s*:\s*\*{0,2}\s*(0?\.\d+|1(?:\.0+)?)",
+            re.IGNORECASE,
+        )
 
-        return text.strip()
+        for match in block_pattern.finditer(text):
+            quantity_match = quantity_pattern.search(match.group(2))
+            confidence_match = confidence_pattern.search(match.group(2))
+            if quantity_match and confidence_match:
+                foods.append({
+                    "name": match.group(1).strip(),
+                    "estimated_quantity": f"{quantity_match.group(1)} {quantity_match.group(2)}",
+                    "confidence": float(confidence_match.group(1)),
+                })
+
+        if foods:
+            return {"foods": foods, "image_quality": "good"}
+
+        inline_pattern = re.compile(
+            r"(?:^|\n)\s*[-*]\s*\*{0,2}([^:*\n]+?)\*{0,2}\s*:\s*"
+            r".*?(\d+(?:\.\d+)?)\s*(g|kg|ml|cup|cups|piece|pieces)"
+            r".*?(?:confidence|score).*?(0?\.\d+|1(?:\.0+)?)",
+            re.IGNORECASE,
+        )
+
+        for match in inline_pattern.finditer(text):
+            quantity = f"{match.group(2)} {match.group(3)}"
+            confidence = float(match.group(4))
+            if 0.0 <= confidence <= 1.0:
+                foods.append({
+                    "name": match.group(1).strip(),
+                    "estimated_quantity": quantity,
+                    "confidence": confidence,
+                })
+
+        if not foods:
+            return {}
+
+        return {"foods": foods, "image_quality": "good"}
+
+    def _extract_json_from_response(self, text: str) -> str:
+        text = text.strip()
+        if not text:
+            return ""
+
+        candidates = []
+        if "```" in text:
+            for block in text.split("```")[1::2]:
+                candidates.append(block.removeprefix("json").strip())
+        candidates.append(text)
+
+        decoder = json.JSONDecoder()
+        for candidate in candidates:
+            try:
+                decoder.raw_decode(candidate)
+                return candidate
+            except json.JSONDecodeError:
+                pass
+
+            for index, character in enumerate(candidate):
+                if character not in "[{":
+                    continue
+                try:
+                    _, end = decoder.raw_decode(candidate[index:])
+                    return candidate[index:index + end]
+                except json.JSONDecodeError:
+                    continue
+
+        return ""
 
 _food_analyzer_instance = None
 

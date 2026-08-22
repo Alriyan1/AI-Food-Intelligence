@@ -4,9 +4,9 @@ import httpx
 from typing import List,Dict,Any,Optional
 from loguru import logger
 
-from backend.config import settings
-from backend.schemas.chat import ChatMessage,ChatResponse
-from backend.utils.prompts import CHAT_ASSISTANT_PROMPT
+from config import settings
+from schemas.chat import ChatMessage,ChatResponse
+from utils.prompts import CHAT_ASSISTANT_PROMPT
 
 class ChatService:
 
@@ -47,7 +47,7 @@ class ChatService:
             )
 
         except Exception as e:
-            logger.error(f"Chat processing failed: {e}")
+            logger.error("Chat processing failed: {}", e)
             raise ValueError(f"Chat failed: {str(e)}")
 
 

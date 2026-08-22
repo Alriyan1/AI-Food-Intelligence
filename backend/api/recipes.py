@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from backend.schemas.recipe import (
+from schemas.recipe import (
     RecipeGenerationRequest,
     RecipeGenerationResponse,
     UserPreferences,
@@ -10,7 +10,7 @@ from backend.schemas.recipe import (
     CuisineType
 )
 
-from backend.services.recipe_service import get_recipe_service
+from services.recipe_service import get_recipe_service
 
 router = APIRouter(prefix="/api/generate-recipes",tags=['Recipe Generation'])
 
@@ -73,7 +73,7 @@ async def generate_recipes(
             }
 
     except Exception as e:
-        logger.error(f"Recipe generation failed: {e}",exc_info=True)
+        logger.error("Recipe generation failed: {}", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Recipe generation failed: {str(e)}"
@@ -112,7 +112,7 @@ async def generate_recipes_quick(
 
 
     except Exception as e:
-        logger.error(f"Quick recipe generation failed: {e}")
+        logger.error("Quick recipe generation failed: {}", e)
         raise HTTPException(
             status_code=500,
             detail=f"Recipe generation failed: {str(e)}"
